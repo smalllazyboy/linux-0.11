@@ -65,7 +65,7 @@ sa_mask = 4                 # 信号屏蔽码
 sa_flags = 8                # 信号集
 sa_restorer = 12            # 恢复函数指针
 
-nr_system_calls = 72        # Linux 0.11 版本内核中的系统共调用总数。
+nr_system_calls = 74        # Linux 0.11 版本内核中的系统共调用总数。
 
 /*
  * Ok, I get parallel printer interrupts while using the floppy for some
