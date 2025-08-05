@@ -1,10 +1,11 @@
-CC	=gcc -mcpu=i386
-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
+CC	=gcc-3.4 -march=i386
+CFLAGS	=-m32 -g -Wall -O -fstrength-reduce -fomit-frame-pointer \
 	-finline-functions -nostdinc -I../include
-AS	=as
+AS	=as --32
 AR	=ar
 LD	=ld
-CPP	=gcc -E -nostdinc -I../include
+LDFLAGS =-m elf_i386
+CPP	=gcc-3.4 -E -nostdinc -I../include
 
 .c.o:
 	$(CC) $(CFLAGS) \
@@ -20,7 +21,7 @@ OBJS	= memory.o page.o
 all: mm.o
 
 mm.o: $(OBJS)
-	$(LD) -r -o mm.o $(OBJS)
+	$(LD) -m elf_i386 -r -o mm.o $(OBJS)
 
 clean:
 	rm -f core *.o *.a tmp_make

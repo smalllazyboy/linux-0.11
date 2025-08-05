@@ -9,11 +9,11 @@
 AR	=ar
 AS	=as
 LD	=ld
-LDFLAGS	=-s -x
-CC	=gcc -mcpu=i386
-CFLAGS	=-Wall -O -fstrength-reduce -fomit-frame-pointer \
+LDFLAGS	=-m elf_i386 -x
+CC	=gcc-3.4 -march=i386
+CFLAGS	=-m32 -g -Wall -O -fstrength-reduce -fomit-frame-pointer \
 	-finline-functions -nostdinc -I../include
-CPP	=gcc -E -nostdinc -I../include
+CPP	=gcc-3.4 -E -nostdinc -I../include
 
 .c.s:
 	$(CC) $(CFLAGS) \

@@ -333,7 +333,12 @@ __asm__("testl %1,%1\n\t"
 return __res;
 }
 
-static inline void * memcpy(void * dest,const void * src, int n)
+/*
+ * Changes by falcon<zhangjinw@gmail.com>, the original return value is static
+ * inline ... it can not be called by other functions in another files.
+ */
+
+extern inline void * memcpy(void * dest,const void * src, int n)
 {
 __asm__("cld\n\t"
 	"rep\n\t"
