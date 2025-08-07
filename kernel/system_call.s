@@ -283,3 +283,36 @@ parallel_interrupt:
 	outb %al,$0x20
 	popl %eax
 	iret
+
+switch_to:
+    pushl %ebp
+    movl %esp,%ebp
+    pushl %ecx
+    pushl %ebx
+    pushl %eax
+    movl 8(%ebp),%ebx
+    cmpl %ebx,current
+    je 1f
+# 切换PCB
+    movl %ebx,%eax
+	xchgl %eax,current
+# TSS中的内核栈指针的重写
+    movl tss,%ecx
+	addl $4096,%ebx        # ebx存放的是目标进程的内核栈栈底地址，加上4096也就是4kB（一页的大小）就是栈顶地址了
+	movl %ebx,ESP0(%ecx)   # 全局变量tss是初始进程的tss，根据tss结构体可知偏移4字节会是esp0，指向内核栈的指针，现在该指针被用来指向目标进程的内核栈，全局共用
+# 切换内核栈
+    # ...
+# 切换LDT
+    # ...
+    movl $0x17,%ecx
+    mov %cx,%fs
+# 和后面的 clts 配合来处理协处理器，由于和主题关系不大，此处不做论述
+    cmpl %eax,last_task_used_math
+    jne 1f
+    clts
+
+1:    popl %eax
+    popl %ebx
+    popl %ecx
+    popl %ebp
+ret
