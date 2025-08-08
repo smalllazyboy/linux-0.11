@@ -48,9 +48,10 @@ OLDSS		= 0x2C
 state	= 0		# these are offsets into the task-struct.
 counter	= 4
 priority = 8
-signal	= 12
-sigaction = 16		# MUST be 16 (=len of sigaction)
-blocked = (33*16)
+KERNEL_STACK = 12
+signal	= 16
+sigaction = 20		# MUST be 16 (=len of sigaction)
+blocked = (32*16 + 20)
 
 # offsets within sigaction
 sa_handler = 0
@@ -299,11 +300,14 @@ switch_to:
 # TSS中的内核栈指针的重写
     movl tss,%ecx
 	addl $4096,%ebx        # ebx存放的是目标进程的内核栈栈底地址，加上4096也就是4kB（一页的大小）就是栈顶地址了
-	movl %ebx,ESP0(%ecx)   # 全局变量tss是初始进程的tss，根据tss结构体可知偏移4字节会是esp0，指向内核栈的指针，现在该指针被用来指向目标进程的内核栈，全局共用
+	movl %ebx,ESP0(%ecx)   # 全局变量tss是初始进程的tss，根据tss结构体可知偏移4字节会是esp0，指向内核栈的指针，现在该指针被用来指向目标进程的内核栈，全局共用;之所以要重写tss中的内核栈指针，或许是存在其他的机制需要通过tss使用到当前进程的内核栈；
 # 切换内核栈
-    # ...
+    movl %esp,KERNEL_STACK(%eax)
+	movl 8(%ebp),%ebx	  # 再取一下 ebx，因为前面修改过 ebx 的值,ebx现在为目标进程的PCB指针
+	movl KERNEL_STACK(%ebx),%esp	# 把目标进程的的内核栈指针赋值给sep
 # 切换LDT
-    # ...
+    movl 12(%ebp),%ecx	# 负责取出LDT（next）参数
+	lldt %cx			# 负责修改LDTR寄存器
     movl $0x17,%ecx
     mov %cx,%fs
 # 和后面的 clts 配合来处理协处理器，由于和主题关系不大，此处不做论述

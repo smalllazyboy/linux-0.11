@@ -85,6 +85,7 @@ struct task_struct
 	long state; /* -1 unrunnable, 0 runnable, >0 stopped */
 	long counter;
 	long priority;
+	long kernelstack;
 	long signal;
 	struct sigaction sigaction[32];
 	long blocked; /* bitmap of masked signals */
@@ -120,6 +121,7 @@ struct task_struct
 		0,                                                                                                                                                                     \
 		15,                                                                                                                                                                    \
 		15,                                                                                                                                                                    \
+		PAGE_SIZE + (long)&init_task,                                                                                                                                          \
 		/* signals */ 0,                                                                                                                                                       \
 		{                                                                                                                                                                      \
 			{},                                                                                                                                                                \
