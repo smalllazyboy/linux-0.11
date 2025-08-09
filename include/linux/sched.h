@@ -203,23 +203,43 @@ extern void wake_up(struct task_struct **p);
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
  */
-#define switch_to(pnext, ldt_next)                   \
-	{                                                \
-		struct                                       \
-		{                                            \
-			long a, b;                               \
-		} __tmp;                                     \
-		__asm__("cmpl %%ecx,current\n\t"             \
-				"je 1f\n\t"                          \
-				"movw %%dx,%1\n\t"                   \
-				"xchgl %%ecx,current\n\t"            \
-				"ljmp *%0\n\t"                       \
-				"cmpl %%ecx,last_task_used_math\n\t" \
+
+// 为实现基于内核栈切换的进程切换岁需要的宏定义
+#define KERNEL_STACK 12
+#define ESP0 4
+// 声明汇编中定义的first_return_from_kernel标号
+extern void first_return_from_kernel(void);
+
+#define switch_to(pnext, ldt_next)        \
+	{                                     \
+		__asm__("pushl %%ebp\n\t"                \
+				"movl %%esp, %%ebp\n\t"          \
+				"pushl %%ecx\n\t"                \
+				"pushl %%ebx\n\t"                \
+				"pushl %%eax\n\t"                \
+				"movl 8(%&ebp),%&ebx\n\t"        \
+				"cmpl %&ebx,current\n\t"         \
+				"je 1f\n\t"                      \
+				"movl %%ebx,%%eax\n\t"               \
+				"xchgl %%eax,current\n\t"            \
+				"movl tss,%%ecx\n\t"                 \
+				"addl $4096,%%ebx\n\t"             \
+				"movl %%ebx,ESP0(%%ecx)\n\t"\
+				"movl %%esp,KERNEL_STACK(%%eax)\n\t" \
+				"movl 8(%%ebp),%%ebx\n\t"            \
+				"movl KERNEL_STACK(%%ebx),%%esp\n\t" \
+				"movl 12(%%ebp),%%ecx\n\t"           \
+				"lldt %%cx\n\t"                      \
+				"movl $0x17,%%ecx\n\t"               \
+				"mov %%cx,%%fs\n\t"                  \
+				"cmpl %%eax,last_task_used_math\n\t" \
 				"jne 1f\n\t"                         \
-				"clts\n"                             \
-				"1:" ::"m"(*&__tmp.a),               \
-				"m"(*&__tmp.b),                      \
-				"d"(_TSS(n)), "c"((long)task[n]));   \
+				"clts\n\t"                           \
+				"1:    popl %%eax\n\t"               \
+				"popl %%ebx\n\t"                     \
+				"popl %%ecx\n\t"                     \
+				"popl %%ebp\n\t"                     \
+				"ret\n\t"::);                          \
 	}
 
 #define PAGE_ALIGN(n) (((n) + 0xfff) & 0xfffff000)

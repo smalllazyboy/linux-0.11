@@ -59,6 +59,8 @@ union task_union
 static union task_union init_task = {
 	INIT_TASK,
 };
+// 为实现基于内核栈切换的进程切换所做的修改
+struct tss_struct *tss = &(init_task.task.tss);
 
 long volatile jiffies = 0;
 long startup_time = 0;
