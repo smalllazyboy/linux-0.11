@@ -146,10 +146,10 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
 	*(--krnstack) = cs & 0xffff;
 	*(--krnstack) = eip;
 	// 恢复CPU寄存器现场
-	*(--krnstack) = ds;
-	*(--krnstack) = es;
-	*(--krnstack) = fs;
-	*(--krnstack) = gs;
+	*(--krnstack) = ds & 0xffff;	// 为了让这些8位的数据能被正确弹栈
+	*(--krnstack) = es & 0xffff;
+	*(--krnstack) = fs & 0xffff;
+	*(--krnstack) = gs & 0xffff;
 	*(--krnstack) = esi;
 	*(--krnstack) = edi;
 	*(--krnstack) = edx;

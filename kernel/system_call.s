@@ -51,6 +51,8 @@ priority = 8
 signal	= 16
 sigaction = 20		# MUST be 16 (=len of sigaction)
 blocked = (32*16 + 20)
+ESP0 = 4
+KERNEL_STACK = 12
 
 # offsets within sigaction
 sa_handler = 0
@@ -68,9 +70,45 @@ nr_system_calls = 72
 .globl system_call,sys_fork,timer_interrupt,sys_execve
 .globl hd_interrupt,floppy_interrupt,parallel_interrupt
 .globl device_not_available, coprocessor_error
+.globl switch_to
 .globl first_return_from_kernel
 
-! 为实现基于内核栈切换的进程切换所做的修改
+#为实现基于内核栈切换的进程切换所做的修改
+switch_to:
+    pushl %ebp
+    movl %esp,%ebp
+    pushl %ecx
+    pushl %ebx
+    pushl %eax
+    movl 8(%ebp),%ebx
+    cmpl %ebx,current
+    je 1f
+# 切换PCB
+	movl %ebx,%eax
+	xchgl %eax,current
+# TSS中的内核栈指针的重写
+	movl tss,%ecx
+	addl $4096,%ebx        # ebx存放的是目标进程的内核栈的内存首地址，加上4096也就是4kB（一页的大小）就是栈底地址（基于栈是向下生长）了
+	movl %ebx,ESP0(%ecx)   # 全局变量tss是初始进程的tss，根据tss结构体可知偏移4字节会是esp0，指向内核栈的指针，现在该指针被用来指向目标进程的内核栈，全局共用;之所以要重写tss中的内核栈指针，或许是存在其他的机制需要通过tss使用到当前进程的内核栈；
+# 切换内核栈
+	movl %esp,KERNEL_STACK(%eax)
+	movl 8(%ebp),%ebx	  # 再取一下 ebx，因为前面修改过 ebx 的值,ebx现在为目标进程的PCB指针
+	movl KERNEL_STACK(%ebx),%esp	# 把目标进程的的内核栈指针赋值给sep
+# 切换LDT
+    movl 12(%ebp),%ecx	# 负责取出LDT（next）参数
+	lldt %cx			# 负责修改LDTR寄存器
+	movl $0x17,%ecx
+	mov %cx,%fs
+# 和后面的 clts 配合来处理协处理器，由于和主题关系不大，此处不做论述
+	cmpl %eax,last_task_used_math
+	jne 1f
+	clts
+1:  popl %eax
+	popl %ebx
+	popl %ecx
+	popl %ebp
+	ret
+
 .align 2
 first_return_from_kernel:
 	popl %edx
@@ -302,39 +340,3 @@ parallel_interrupt:
 	outb %al,$0x20
 	popl %eax
 	iret
-
-#switch_to:
-#    pushl %ebp
-#    movl %esp,%ebp
-#    pushl %ecx
-#    pushl %ebx
-#    pushl %eax
-#    movl 8(%ebp),%ebx
-#    cmpl %ebx,current
-#    je 1f
-# 切换PCB
-#   movl %ebx,%eax
-#	xchgl %eax,current
-# TSS中的内核栈指针的重写
-#   movl tss,%ecx
-#	addl $4096,%ebx        # ebx存放的是目标进程的内核栈的内存首地址，加上4096也就是4kB（一页的大小）就是栈底地址（基于栈是向下生长）了
-#	movl %ebx,ESP0(%ecx)   # 全局变量tss是初始进程的tss，根据tss结构体可知偏移4字节会是esp0，指向内核栈的指针，现在该指针被用来指向目标进程的内核栈，全局共用;之所以要重写tss中的内核栈指针，或许是存在其他的机制需要通过tss使用到当前进程的内核栈；
-# 切换内核栈
-#   movl %esp,KERNEL_STACK(%eax)
-#	movl 8(%ebp),%ebx	  # 再取一下 ebx，因为前面修改过 ebx 的值,ebx现在为目标进程的PCB指针
-#	movl KERNEL_STACK(%ebx),%esp	# 把目标进程的的内核栈指针赋值给sep
-# 切换LDT
-#   movl 12(%ebp),%ecx	# 负责取出LDT（next）参数
-#	lldt %cx			# 负责修改LDTR寄存器
-#   movl $0x17,%ecx
-#   mov %cx,%fs
-#和后面的 clts 配合来处理协处理器，由于和主题关系不大，此处不做论述
-#   cmpl %eax,last_task_used_math
-#   jne 1f
-#   clts
-#
-#1: popl %eax
-#   popl %ebx
-#   popl %ecx
-#   popl %ebp
-#ret
