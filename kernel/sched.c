@@ -133,7 +133,7 @@ void schedule(void)
 
 				// the process is transfered to be ready
 				// fprintk(1, "The ID of ready process is %ld", (*p)->pid);
-				// fprintk(3, "%ld\t%c\t%ld\n", (*p)->pid, 'J', jiffies);
+				fprintk(3, "%ld\t%c\t%ld\n", (*p)->pid, 'J', jiffies);
 			}
 		}
 
@@ -160,10 +160,14 @@ void schedule(void)
 								(*p)->priority;
 	}
 
-	// the process is transfered to be running
+	// the process is transfered to be running or the process is not changed
 	p = &task[next];
-	// fprintk(1, "The ID of runningprocess is %ld", (*p)->pid);
-	fprintk(3, "%ld\t%c\t%ld\n", (*p)->pid, 'R', jiffies);
+	if ((*p)->pid != current->pid)
+	{
+		if (current->state == TASK_RUNNING)
+			fprintk(3, "%ld\t%c\t%ld\n", current->pid, 'J', jiffies);
+		fprintk(3, "%ld\t%c\t%ld\n", (*p)->pid, 'R', jiffies);
+	}
 
 	switch_to(next);
 }
@@ -172,9 +176,13 @@ int sys_pause(void)
 {
 	current->state = TASK_INTERRUPTIBLE;
 
+	// 进程0初始化完成后的任务就是不停调用该函数以激活调度算法，此时进程0属于运行态
+	// 所以尽管有时候进程0确实变为了等待态，但也有可能进程0是在运行态，运行的任务就是调用该函数，所以在此忽略进程0
+	// 因为说进程0转换为了等待态并不完全正确（对所有可能的状况没有一个确定的答案）
 	// the process is transfered to be sleep
 	// fprintk(1, "The ID of sleep process is %ld", current->pid);
-	fprintk(3, "%ld\t%c\t%ld\n", current->pid, 'W', jiffies);
+	if (current->pid != 0)
+		fprintk(3, "%ld\t%c\t%ld\n", current->pid, 'W', jiffies);
 
 	schedule();
 	return 0;
@@ -224,7 +232,7 @@ repeat:
 	fprintk(3, "%ld\t%c\t%ld\n", current->pid, 'W', jiffies);
 
 	schedule();
-	if (*p && *p != current)
+	if (*p && *p != current) // *p 是可能会在其他进程中被修改的
 	{
 		(**p).state = 0;
 
@@ -236,7 +244,10 @@ repeat:
 	}
 	*p = NULL;
 	if (tmp)
+	{
+		fprintk(3, "%ld\t%c\t%ld\n", tmp->pid, 'J', jiffies);
 		tmp->state = 0;
+	}
 }
 
 void wake_up(struct task_struct **p)

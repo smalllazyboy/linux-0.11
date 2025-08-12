@@ -92,11 +92,6 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
 	p->utime = p->stime = 0;
 	p->cutime = p->cstime = 0;
 	p->start_time = jiffies;
-
-	// create a new process
-	// fprintk(1, "The ID of new process is %ld", current->pid);
-	fprintk(3, "%ld\t%c\t%ld\n", p->pid, 'N', p->start_time);
-
 	p->tss.back_link = 0;
 	p->tss.esp0 = PAGE_SIZE + (long)p;
 	p->tss.ss0 = 0x10;
@@ -139,8 +134,8 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
 	set_ldt_desc(gdt + (nr << 1) + FIRST_LDT_ENTRY, &(p->ldt));
 	p->state = TASK_RUNNING; /* do this last, just in case */
 
-	// the process is transfered to ready
-	// fprintk(1, "The ID of ready process is %ld", current->pid);
+	// the process is created and transfered to ready
+	fprintk(3, "%ld\t%c\t%ld\n", p->pid, 'N', p->start_time);
 	fprintk(3, "%ld\t%c\t%ld\n", current->pid, 'J', jiffies);
 
 	return last_pid;
