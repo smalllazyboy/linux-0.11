@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "stat.h": "c",
+        "errors.h": "c",
+        "segment.h": "c"
+    }
+}
