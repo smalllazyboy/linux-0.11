@@ -14,6 +14,8 @@
 
 .text
 .globl keyboard_interrupt
+.globl my_flag
+my_flag: .long 0
 
 /*
  * these are for the keyboard read functions
@@ -86,8 +88,8 @@ set_e1:	movb $2,e0
  * order %al,%ah,%eal,%eah,%bl,%bh ... until %eax is zero.
  */
 put_queue:
-	pushl %ecx
-	pushl %edx
+	pushl %ecx    # 保存ecx寄存器的值到栈（后续会修改ecx，需恢复）
+	pushl %edx    # 保存edx寄存器的值到栈（后续会修改edx，需恢复）
 	movl table_list,%edx		# read-queue for console
 	movl head(%edx),%ecx
 1:	movb %al,buf(%edx,%ecx)
@@ -224,6 +226,7 @@ func:
 	jb end_func
 	cmpb $11,%al
 	ja end_func
+	xorl $1,my_flag /* 添加的异或语句 */
 ok_func:
 	cmpl $4,%ecx		/* check that there is enough room */
 	jl end_func
